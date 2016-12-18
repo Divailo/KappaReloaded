@@ -3,61 +3,92 @@ import requests
 from requests.auth import HTTPDigestAuth
 import json
 
+print "==========================="
+
 dota2ApiKey = "B54822F7D28AD07C07A21A60A0578F39"
 
 api = dota2api.Initialise(dota2ApiKey)
 
-liveGamesCollection = api.get_live_league_games()['games']
+publicMatchesUrl = "https://api.opendota.com/api/publicMatches"
+myResponse = json.loads(requests.get(publicMatchesUrl).content)
+_matchIDs = []
 
-#array of dota2 account ids
-_players = []
+# getting random recent matches
+for match in myResponse:
+	matchID = str(match['match_id'])
+	print "Match Id: " + matchID
+	_matchIDs.append(matchID)
 
-print "==========================="
+_playerIDs = []
 
-counter = 0
+# getting players from the given matches
+print "Adding palyer ids..."
+for matchID in _matchIDs:
+	matchUrl = "https://api.opendota.com/api/matches/" + matchID
+	myResponse = json.loads(requests.get(matchUrl).content)
+	try:
+		for player in myResponse['players']:
+			playerID = str(player['account_id'])
+			if playerID != "null":
+				_playerIDs.append(playerID)
+			else:
+				print "         PlayerID is null"
+	except Exception, e:
+		print "No players info for match " + matchID
 
-#loop through random n live games
-while counter < 2:
-	playersArray = liveGamesCollection[counter]['players']
-	x = 0
-	for x in playersArray:
-		accountId = str(x['account_id'])
-		_players.append(accountId)
-
-	counter = counter + 1
-
-#array of steam account ids
+# link to their steam ids so the country can be found later
 _steamIds = []
 
-for _id in _players:
+for playerID in _playerIDs:
 	try:
-		openDotaUrl = "https://api.opendota.com/api/players/" + _id
+		openDotaUrl = "https://api.opendota.com/api/players/" + playerID
 		myResponse = requests.get(openDotaUrl)
-		_steamId = int(json.loads(myResponse.content)['profile']['steamid'])
-		_steamIds.append(_steamId)
+		steamId = str(json.loads(myResponse.content)['profile']['steamid'])
+		_steamIds.append(steamId)
 	except Exception, e:
-		print "            NO STEAM ID"
-	
-#map of steam accounts : country
-_idCountryMap = {}
+		print "            NO STEAM ID FOR" + playerID
+
+
+# find people from russia
+_russians = []
 counter = 0
+idsString = ""
 
-for _id in _steamIds:
+# make a big string of the desired ids to be found, so only one request is made
+for steamID in _steamIds:
+	idsString = idsString + steamID + ","
+
+# actual getting russian players
+for steamID in _steamIds:
 	try:
-		steamUrl = "http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=B54822F7D28AD07C07A21A60A0578F39&steamids=" + str(_id)
+		steamUrl = "http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=B54822F7D28AD07C07A21A60A0578F39&steamids=" + idsString
 		myResponse = requests.get(steamUrl)
-		playerCountry = json.loads(myResponse.content)['response']['players'][0]['loccountrycode']
-		#add to the dictionary
-		_idCountryMap[_players[counter]] = str(playerCountry)
+		playersArray = json.loads(myResponse.content)['response']['players']
+		for playerInfo in playersArray:
+			playerCountry = playerInfo['loccountrycode']
+			if str(playerCountry) == "RU":
+				#add to the russians list
+				_russians.append(_playerIDs[counter])
+				print _playerIDs[counter] + " is from" + str(playerCountry)
+			else:
+				print str(playerCountry)
 	except Exception, e:
-		print "            NO COUNTRY"
-
-	counter = counter + 1
-
-for key, value in _idCountryMap.iteritems():
-	print key + " lives in " + value 
+		print "            NO COUNTRY FOR " + steamID
+	finally:
+		counter = counter + 1
 
 
+#wordcloud za da razbere6 kakwo pi6at naj-mnogo w 4ata
+# for _id in _players:
+# 	try:
+# 		url = "https://api.opendota.com/api/players/" + _id + "/wordcloud"
+# 		myResponse = requests.get(url)
+# 		print str(json.loads(myResponse.content))
+# 	except Exception, e:
+# 		print "can't get wordcloud"
 
-print "\n ==========================="
+# stats
+# https://api.opendota.com/api/players/{account_id}/counts
+
+print "\n==========================="
 print "Done!"
