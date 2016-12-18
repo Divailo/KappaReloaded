@@ -20,10 +20,9 @@ counter = 0
 while counter < 2:
 	playersArray = liveGamesCollection[counter]['players']
 	x = 0
-	while x < 10:
-		accountId = str(playersArray[x]['account_id'])
+	for x in playersArray:
+		accountId = str(x['account_id'])
 		_players.append(accountId)
-		x = x + 1
 
 	counter = counter + 1
 
