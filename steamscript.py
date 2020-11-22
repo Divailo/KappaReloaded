@@ -5,7 +5,7 @@ import json
 
 print "==========================="
 
-dota2ApiKey = "B54822F7D28AD07C07A21A60A0578F39"
+dota2ApiKey = ""
 
 api = dota2api.Initialise(dota2ApiKey)
 
